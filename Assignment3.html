@@ -1,0 +1,295 @@
+<!doctype html>
+<html>
+  <body>
+
+<canvas id="canvas" width="1900" height="1000" style="border:1px solid #000;"></canvas>
+<input type="range"  min="1" max="120" value="60" onchange="updateFrameRate(this.value)"/>
+<span id="FrameRateLabel">60</span>
+    
+  <script> "use strict"
+
+//A list of keys that are currently pressed down
+var keysdown = {};
+
+var maxFps = 120; //max FPS allowed
+function updateFrameRate(newFrameRate)
+{
+	maxFps = newFrameRate;
+	document.getElementById("FrameRateLabel").innerHTML=maxFps;
+}
+
+var frameCount = 0; //count total number of frames rendered
+var delta = 0;
+
+
+//Event listener for when the user presses a key
+window.addEventListener("keydown", function (event) {
+  if (event.defaultPrevented) {
+    return; // Do nothing if the event was already processed
+  }
+  
+  keysdown[event.key] = true;
+
+  // Cancel the default action to avoid it being handled twice
+  event.preventDefault();
+}, true);
+// the last option dispatches the event to the listener first,
+// then dispatches event to window
+
+//Event listener for when the user releases a key
+window.addEventListener("keyup", function (event) {
+  if (event.defaultPrevented) {
+    return; // Do nothing if the event was already processed
+  }
+  
+  keysdown[event.key] = false;
+
+  // Cancel the default action to avoid it being handled twice
+  event.preventDefault();
+}, true);
+// the last option dispatches the event to the listener first,
+// then dispatches event to window
+
+
+window.onload = function() {
+  var canvas = document.getElementById("canvas");
+  var context = canvas.getContext("2d");
+  var radius_increase = true;
+  var rotation = 0;
+
+			
+  //The ball that serves as planets and moons
+  //http://jsfiddle.net/wY8d7/1/
+  var ball = {
+	      x:canvas.width/2, //the x location of the ball
+              y:canvas.height/2, //the y location of the ball
+			  radius: 67, //the radius of the ball
+			  fillColor: "red", //what color should the ball be
+			  strokeColor:"grey", //what color should the outline of the ball be
+			  velocity_x:2, //how fast the ball will move in the x direction
+			  velocity_y:1}; //how fast the ball will move in the y direction
+
+  var moon = {
+	      x:canvas.width/2, //the x location of the ball
+              y:canvas.height/2, //the y location of the ball
+			  radius: 10, //the radius of the ball
+			  fillColor: "grey", //what color should the ball be
+			  strokeColor:"grey", //what color should the outline of the ball be
+			  velocity_x:2, //how fast the ball will move in the x direction
+			  velocity_y:1}; //how fast the ball will move in the y direction
+
+  var fps = 0; //this is the fps that is displayed to the user
+  var framesThisSecond = 0; //this is a counter that counts how many frames we draw every second
+            
+  setInterval(function() { fps = framesThisSecond; framesThisSecond = 0; }, 1000);
+			
+  var lastFrameTimeMs = 0; //last time the loop was run
+			
+  //draw the first frame
+  requestAnimationFrame(mainLoop);
+
+  var timestep = 1000 / maxFps;
+	
+  function panic() {
+    delta = 0;
+    console.log("Panic!")
+  }		
+
+  //Game Loop
+  function mainLoop(timestamp) {
+        // Throttle the frame rate based on the slider value    
+	if (timestamp < lastFrameTimeMs + (1000 / maxFps)) {
+		requestAnimationFrame(mainLoop);
+		return;
+		}
+        delta = timestamp - lastFrameTimeMs;
+	lastFrameTimeMs = timestamp;
+
+        
+	processInput();
+	var numUpdateSteps = 0;
+	while(delta >= timestep){
+		update(delta);
+		delta -= timestep;
+		// Sanity check
+        	if (++numUpdateSteps >= 240) {
+            	panic(); // fix things
+            	break; // bail out	
+		}
+	}
+  	//update(delta)	
+	draw();
+				
+        requestAnimationFrame(mainLoop);
+	}
+
+  function processInput()
+  {
+    if(keysdown.ArrowLeft) {
+	if(ball.velocity_x > 0){
+		ball.velocity_x = ball.velocity_x - 1;
+		console.log("Left_x: ", ball.velocity_x);
+		}
+	}
+    
+    if(keysdown.ArrowUp){
+	if(ball.velocity_y >= 0){
+		ball.velocity_y = ball.velocity_y + 1;
+		console.log("Up_y: ", ball.velocity_y);
+		}
+	}
+				
+    if (keysdown.ArrowRight) {
+	if(ball.velocity_x >= 0){
+        	ball.velocity_x = ball.velocity_x + 1;
+		console.log("Right_x: ", ball.velocity_x);
+		}
+	}
+				
+    if (keysdown.ArrowDown) {
+	if(ball.velocity_y > 0){
+		ball.velocity_y = ball.velocity_y - 1;
+		console.log("Down_y: ", ball.velocity_y);
+		}
+	}
+  } 
+  function update() {
+    //update position based on velocity
+
+    ball.x = ball.x + ball.velocity_x * delta ;
+    ball.y = ball.y + ball.velocity_y * delta;
+    rotation = rotation + 0.5;
+
+    if (rotation > 360){
+	rotation = 0;
+	}
+
+    //shrinks or expands moon radius
+    //Set to "0" to not shrink or expand
+    if (radius_increase == true){
+	moon.radius = moon.radius + 0;
+	}
+    if (radius_increase == false){
+	moon.radius = moon.radius - 0;
+	}
+		
+    //make the ball bounce off the walls
+    //Reverses wheather moon is shrinking or expanding
+	if (ball.x > canvas.width) {
+      ball.velocity_x = -ball.velocity_x; //ball.velocity_x *= -1;
+	if (radius_increase == true){
+            radius_increase = false;
+        }else {
+            radius_increase = true;
+	}
+
+	}
+				
+	if (ball.x < 0) {
+      ball.velocity_x = -ball.velocity_x;
+	if (radius_increase == true){
+            radius_increase = false;
+        }else {
+            radius_increase = true;
+	}
+	}
+				
+	if (ball.y > canvas.height) {
+      ball.velocity_y = -ball.velocity_y;
+	if (radius_increase == true){
+            radius_increase = false;
+        }else {
+            radius_increase = true;
+	}
+	}
+				
+	if (ball.y < 0) {
+      ball.velocity_y = - ball.velocity_y;
+	if (radius_increase == true){
+            radius_increase = false;
+        }else {
+            radius_increase = true;
+	}
+	}	
+         if (frameCount < 100) {
+            console.log("ball.x: " + ball.x);
+        }
+  }
+  
+  function draw() {			
+    //clear our drawing
+    context.clearRect(0, 0, canvas.width, canvas.height);
+    
+    context.save();
+
+    //make canvas background black
+    context.fillStyle = "black";
+    context.fillRect(0,0,canvas.width,canvas.height);
+
+    context.translate(ball.x, ball.y);
+
+    //draw Mars
+    context.beginPath();
+    context.arc(0, 0, ball.radius, 0, 2 * Math.PI, false);
+    context.fillStyle = ball.fillColor;
+	context.fill();
+	context.lineWidth = 1;
+	context.strokeStyle = ball.strokeColor;
+	context.stroke();
+
+    //draw Phobos orbit line 
+    context.strokeStyle = "white"; 
+    context.beginPath();
+    context.arc(0, 0, 90, 0, Math.PI * 2); 
+    context.stroke();
+
+    //rotate Phobos
+    context.rotate( rotation * Math.PI / 180);
+
+    //draw Phobos moon
+    context.beginPath();
+    context.arc(0, 90, 10, 0, 2 * Math.PI);
+    context.fillStyle = moon.fillColor;
+	context.fill();
+	context.lineWidth = 1;
+	context.strokeStyle = ball.strokeColor;
+	context.stroke();
+
+   
+    //draw Deimos orbit line 
+    context.strokeStyle = "white"; 
+    context.beginPath();
+    context.arc(0, 0, 260, 0, Math.PI * 2); 
+    context.stroke();
+
+    //rotate Deimos
+    context.rotate(rotation * Math.PI / 180);
+
+    //draw Deimos moon
+    context.beginPath();
+    context.arc(0, 260, 5, 0, 2 * Math.PI);
+    context.fillStyle = moon.fillColor;
+	context.fill();
+	context.lineWidth = 1;
+	context.strokeStyle = ball.strokeColor;
+	context.stroke();
+
+
+    context.restore();
+
+    //draw the fps counter
+    context.fillText("FPS: " + fps, 10, 10);
+    context.fillStyle = "white"              
+    //count a frame as drawn
+    ++framesThisSecond;
+              
+    ++frameCount;
+    if (frameCount < 100) {
+      console.log("frame: " + frameCount);
+    }
+  }
+};
+  </script>
+
+</body>
+</html>
